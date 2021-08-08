@@ -277,7 +277,7 @@ zh_annual_events_df <- data.frame()
 
 wiki_annual_urls[401]
 
-for (year in wiki_annual_urls[1:1]) {
+for (year in wiki_annual_urls[700:701]) {
   year_scraped <- read_html(year)
   year_events <- c()
 
@@ -339,6 +339,8 @@ for (year in wiki_annual_urls[1499:1501]) {
   
 }
 
+write_csv(fr_annual_events_df, "fr_annual_events.csv")
+
 # Remove sur la site bibliothque nationale du France
 # remove the various portails (de, du, etc.)
 
@@ -384,7 +386,7 @@ for (year in wiki_annual_urls) {
 write_csv(en_annual_events_df, "en_annual_events.csv")
 
 
-
+### Move to the cleaning I section of the document
 events_df_cleaning <- en_annual_events_df %>%
   mutate(is_bc = str_detect(wikipedia_urls, "BC"),
          year = str_extract(wikipedia_urls, ("\\d+")) %>% 
@@ -418,12 +420,113 @@ events_df_grouped %>%
 
 
 ### German
+```{r}
+url_constant <- "https://de.wikipedia.org/wiki/"
+dates_bc <- seq(from = 1, to = 652)
+dates_ad <- seq(from = 1, to = 2020)
+
+variable_bc <- str_c(dates_bc, "_v._Chr.")
+variable_ad <- str_c(dates_ad)
+
+wiki_annual_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
 
 
-### Italian
+de_annual_events_df <- data.frame()
+
+
+for (year in wiki_annual_urls[1:3]) {
+  year_scraped <- read_html(year)
+
+  events_scraped <- year_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(events_scraped)),
+    event = events_scraped
+  )
+  Sys.sleep(4)
+  de_annual_events_df <- bind_rows(de_annual_events_df, year_df)
+  
+}
+
+write_csv(de_annual_events_df, "de_annual_events.csv")
+```
 
 
 ### Japanese
+```{r}
+url_constant <- "https://jp.wikipedia.org/wiki/"
+dates_bc <- seq(from = 1, to = 700)
+dates_ad <- seq(from = 1, to = 2020)
+
+variable_bc <- str_c("紀元前", dates_bc, "年")
+variable_ad <- str_c(dates_ad, "年")
+
+wiki_annual_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+jp_annual_events_df <- data.frame()
+
+
+
+for (year in wiki_annual_urls[1:3]) {
+  year_scraped <- read_html(year)
+
+  events_scraped <- year_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(events_scraped)),
+    event = events_scraped
+  )
+  Sys.sleep(4)
+  jp_annual_events_df <- bind_rows(jp_annual_events_df, year_df)
+  
+}
+
+write_csv(jp_annual_events_df, "jp_annual_events.csv")
+```
+
+
+### Italian
+```{r}
+url_constant <- "https://it.wikipedia.org/wiki/"
+dates_bc <- seq(from = 1, to = 500)
+dates_ad <- seq(from = 1, to = 2020)
+
+variable_bc <- str_c(dates_bc, "_a.C.")
+variable_ad <- str_c(dates_ad)
+
+wiki_annual_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+it_annual_events_df <- data.frame()
+
+
+
+for (year in wiki_annual_urls[1:3]) {
+  year_scraped <- read_html(year)
+
+  events_scraped <- year_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(events_scraped)),
+    event = events_scraped
+  )
+  Sys.sleep(4)
+  it_annual_events_df <- bind_rows(it_annual_events_df, year_df)
+  
+}
+
+write_csv(it_annual_events_df, "it_annual_events.csv")
+```
 
 
 ### Russian
@@ -465,11 +568,64 @@ for (year in wiki_annual_urls[1:3]) {
 
 
 ### Spanish
+```{r}
+url_constant <- "https://es.wikipedia.org/wiki/"
+dates_bc <- seq(from = 1, to = 500)
+dates_ad <- seq(from = 1, to = 2020)
+
+variable_bc <- str_c(dates_bc, "_a._C.")
+variable_ad <- str_c(dates_ad)
+
+wiki_annual_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+es_annual_events_df <- data.frame()
+
+
+
+for (year in wiki_annual_urls[1:3]) {
+  year_scraped <- read_html(year)
+
+  events_scraped <- year_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(events_scraped)),
+    event = events_scraped
+  )
+  Sys.sleep(4)
+  es_annual_events_df <- bind_rows(es_annual_events_df, year_df)
+  
+}
+
+write_csv(es_annual_events_df, "es_annual_events.csv")
+```
 
 
 
 
 
+
+
+## Cleaning
+Cleaning consists of three steps:
+1. Extraction of the years of interest from the wiki urls
+2. Initial evaluation of repeating fluff and removal of accidental white space. This includes investigating the following years "by hand":
+* 3 years at start
+* 3 years around every round 500 yr mark
+* 161 BC
+* 372 AD
+* 967 AD
+* 1472 AD
+* 1782 AD
+* 1986 AD
+The final years being arbitrarily chosen for additional insection.
+3. Investigating any visual outliers when lotting the data on linear and log scales.
+4. Investigating any outliers determinated visually or by boxplots from the residuals of regression models. 
+
+Any identified false entries will be removed over the entire data set.
 
 
 

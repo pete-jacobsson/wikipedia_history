@@ -1,0 +1,19 @@
+"0","for (year in wiki_annual_urls[1:3]) {
+  last_url_run <- last_url_run + 1
+  year_scraped <- read_html(year)
+
+  events_scraped <- year_scraped %>%
+    html_nodes("".mw-parser-output > ul li"") %>%
+    html_text()
+
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(events_scraped)),
+    event = events_scraped
+  )
+  Sys.sleep(4)
+  de_annual_events_df <- bind_rows(fr_annual_events_df, year_df)
+  
+}
+"
+"2","Error in list2(...) : object 'fr_annual_events_df' not found
+"
