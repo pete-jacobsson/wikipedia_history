@@ -1,0 +1,107 @@
+---
+title: 'The tempo of history part 2: beyond the anglophone world'
+author: "Pete Jacobsson"
+date: "7/5/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+library(purrr)
+library(broom)
+```
+
+## Introduction: beyond the anglophone world
+So far this project covered how the popular knowledge of the past (as measured by decade-lists scraped from Wikipedia) begins growing exponentially sometime between 1000 and 750 BC. While this is not sufficient to posit a change in the tempo of history as such, it does provide an insight into what the writers of Wikipedia know of the past and by extension, what is the rate of accretion of popular knowledge based on hpw long ago events happened. The 1000 to 750 BC bracket is interesting to us here as it straddles the beginnings of the Axial Age, a period from 800 to 300 BC associated with major cultural transformations.
+
+The results so far were limited to the anglophone sphere. Here we extend them by taking into account the nine other major Wikipedia languages (Russian, Spanish, Chinese, Portugese, Polish, French, Italian, German and Japanese), as well as Arabic and Hindi. 
+
+The aim is to evaluate whether the pattern observed in the anglophone decadal data repeats itself across different languages and histories. The task is made more complex though by the lack of sufficient decadal data on non-ENglish wikis. Instead a centennial collection is introduced for each country.
+
+## Data collection
+
+### Russian
+```{r}
+ru_url_constant <- "https://ru.wikipedia.org/wiki/"
+ru_centuries_bc <- c("XL", "XXXIX", "XXXVIII", "XXXVII", "XXXVI", 
+                  "XXXV", "XXXIV", "XXXIII", "XXXII", "XXXI",
+                  "XXX", "XXIX", "XXVIII", "XXVII", "XXVI", 
+                  "XXV", "XXIV", "XXIII", "XXII", "XXI",
+                  "XX", "XIX", "XVIII", "XVII", "XVI", 
+                  "XV", "XIV", "XIII", "XII", "XI",
+                  "X", "IX", "VIII", "VII", "VI", 
+                  "V", "IV", "III", "II", "I")
+ru_centuries_ad <- c("XX", "XIX", "XVIII", "XVII", "XVI", 
+                  "XV", "XIV", "XIII", "XII", "XI",
+                  "X", "IX", "VIII", "VII", "VI", 
+                  "V", "IV", "III", "II", "I")
+
+
+ru_variable_bc <- str_c(ru_centuries_bc,
+                     "_век_до_н._э.")
+ru_variable_ad <- str_c(ru_centuries_ad,
+                     "_век")
+
+ru_wiki_urls <- c(str_c(ru_url_constant, ru_variable_bc), 
+                      str_c(ru_url_constant, ru_variable_ad))
+```
+
+Extract the data
+
+```{r}
+ru_events_df <- data.frame()
+read_html(ru_wiki_urls[41])
+
+for (century in ru_wiki_urls[41:60]) {
+  century_scraped <- read_html(century)
+
+  events_scraped <- century_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+  
+  century_df <- data.frame(
+    ru_wiki_urls = rep(century, length(events_scraped)),
+    event = events_scraped
+  )
+  Sys.sleep(3)
+  ru_events_df <- bind_rows(ru_events_df, century_df)
+  
+}
+
+ru_events_aggregated <- ru_events_df %>%
+  group_by(ru_wiki_urls) %>%
+  summarize(n_events = n()) %>%
+  mutate(century= c(1, -1, 2, -2, 3, -3, 4, -4, 9, -9,
+                    5, -5, 
+                    6, -6, 7, -7, 8, -8,  10, -10,
+                    11, -11, 12, -12, 13, -13, 14, -14, 19, -19,
+                    -40,
+                    15, -15,
+                    16, -16, 17, -17, 18, -18, 20, -20,
+                    -21, -22, -23, -24, -29, -25, -26, -27, -28, 
+                    -30, -31, -32, -33, -34, -39, -35, -36, -37, -38))
+
+
+
+ru_events_aggregated %>%
+  ggplot(aes(x = century,
+             y = n_events)) +
+  geom_point()
+
+```
+
+
+
+
+### Spanish
+### Portugese
+### Polish
+### French
+### Italian
+### German
+### Japanese
+### Chinese
+### Arabic
+### Hindi

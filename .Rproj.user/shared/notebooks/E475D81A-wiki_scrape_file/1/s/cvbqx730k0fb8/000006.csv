@@ -1,0 +1,20 @@
+"0","for (decade in wiki_decade_urls[601:603]) {
+  decade_scraped <- read_html(decade)
+  decade_events <- c()
+
+  events_scraped <- decade_scraped %>%
+    html_nodes("".mw-parser-output > ul li"") %>%
+    html_text()
+  
+  decade_events <- c(decade_events, events_scraped)
+  decade_df <- data.frame(
+    wikipedia_urls = rep(decade, length(decade_events)),
+    event = decade_events
+  )
+  Sys.sleep(4)
+  zh_decade_events_df <- bind_rows(zh_decade_events_df, decade_df)
+  
+}
+"
+"2","Error: 'NA' does not exist in current working directory ('C:/Users/admin/Dropbox/07_Research-Other/@ACTIVE Axial/001_event_density').
+"

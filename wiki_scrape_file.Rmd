@@ -1,0 +1,492 @@
+---
+title: 'The tempo of history: capture data'
+author: "Pete Jacobsson"
+date: "7/30/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+
+
+```
+
+
+## Introduction
+
+This file covers the scraping of events listed on decadal and annual sites of Wikipedia in the most popular Wikipedia languages and Arabic. 
+
+Decadal information was collected in instances where it provided information on events prior to 1000 BC and is available in the following langauage wikis:
+
+* Chinese: from 1690s BC onwards
+* English: from 1790s BC onwards
+* French: from 2070s BC onwards
+* Russian: from 1210s BC onwards
+
+Annual information covers the following periods in the eight most popular wikipedia languages (and Arabic):
+* Arabic: from 400 BC
+* Chinese: from 699 BC
+* French: from 500 BC
+* English: from 600 BC
+* German: from 652 BC
+* Italian: from 500 BC
+* Japanese: from 700 BC
+* Russian: from 781 BC
+* Spanish: from 510 BC
+
+
+
+## Decadal
+
+### Chinese
+```{r}
+url_constant <- "https://zh.wikipedia.org/wiki/"
+dates_bc <- seq(from = 0, to = 1690, by = 10)
+dates_ad <- seq(from = 0, to = 2010, by = 10)
+
+variable_bc <- str_c("前", dates_bc, "年代")
+variable_ad <- str_c(dates_ad, "年代")
+
+
+wiki_decade_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+zh_decade_events_df <- data.frame()
+
+for (decade in wiki_decade_urls[171:173]) {
+  decade_scraped <- read_html(decade)
+  decade_events <- c()
+
+  events_scraped <- decade_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+  
+  decade_events <- c(decade_events, events_scraped)
+  decade_df <- data.frame(
+    wikipedia_urls = rep(decade, length(decade_events)),
+    event = decade_events
+  )
+  Sys.sleep(4)
+  zh_decade_events_df <- bind_rows(zh_decade_events_df, decade_df)
+  
+}
+
+write_csv(zh_decade_events_df, "zh_decade_events.csv")
+
+
+
+
+```
+
+
+### English
+```{r}
+url_constant <- "https://en.wikipedia.org/wiki/"
+dates_bc <- seq(from = 0, to = 179)*10
+dates_ad <- seq(from = 0, to = 199)*10
+
+variable_bc <- if_else(dates_bc %% 100 == 0 & dates_bc != 0,
+                       str_c(dates_bc, "s_BC_(decade)"),
+                       str_c(dates_bc, "s_BC"))
+
+variable_ad <- if_else(dates_ad %% 100 == 0 & dates_ad != 0,
+                       str_c(dates_ad, "s_(decade)"),
+                       str_c(dates_ad, "s"))
+
+
+wiki_decade_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+
+en_decade_events_df <- data.frame()
+
+wiki_decade_urls[1]
+
+for (decade in wiki_decade_urls[1:380]) {
+  decade_scraped <- read_html(decade)
+  decade_events <- c()
+
+  events_scraped <- decade_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+  
+  decade_events <- c(decade_events, events_scraped)
+  decade_df <- data.frame(
+    wikipedia_urls = rep(decade, length(decade_events)),
+    event = decade_events
+  )
+  Sys.sleep(4)
+  en_decade_events_df <- bind_rows(en_decade_events_df, decade_df)
+  
+}
+
+```
+
+
+### French
+```{r}
+url_constant <- "https://fr.wikipedia.org/wiki/"
+dates_bc <- seq(from = 0, to = 2070, by = 10)
+dates_ad <- seq(from = 0, to = 2010, by = 10)
+
+variable_bc <- str_c("Années_", dates_bc, "_av._J.-C.")
+
+variable_ad <- str_c("Années_", dates_ad)
+
+
+wiki_decade_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+
+fr_decade_events_df <- data.frame()
+
+wiki_decade_urls[1]
+
+for (decade in wiki_decade_urls[1:3]) {
+  decade_scraped <- read_html(decade)
+  decade_events <- c()
+
+  events_scraped <- decade_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+  
+  decade_events <- c(decade_events, events_scraped)
+  decade_df <- data.frame(
+    wikipedia_urls = rep(decade, length(decade_events)),
+    event = decade_events
+  )
+  Sys.sleep(4)
+  fr_decade_events_df <- bind_rows(fr_decade_events_df, decade_df)
+  
+}
+
+write_csv(fr_decade_events_df, "fr_decade_events.csv")
+##In cleaning: remove portail de'l histoire et portail de'lmonde antique
+
+
+```
+
+
+### Russian
+```{r}
+url_constant <- "https://ru.wikipedia.org/wiki/"
+dates_bc <- seq(from = 0, to = 1210, by = 10)
+dates_ad <- seq(from = 0, to = 2010, by = 10)
+
+variable_bc <- str_c(dates_bc, "-е_годы_до_н._э.")
+
+variable_ad <- str_c(dates_ad, "-е_годы")
+
+
+wiki_decade_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+
+ru_decade_events_df <- data.frame()
+
+wiki_decade_urls[1]
+
+for (decade in wiki_decade_urls[1:3]) {
+  decade_scraped <- read_html(decade)
+  decade_events <- c()
+
+  events_scraped <- decade_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+  
+  decade_events <- c(decade_events, events_scraped)
+  decade_df <- data.frame(
+    wikipedia_urls = rep(decade, length(decade_events)),
+    event = decade_events
+  )
+  Sys.sleep(4)
+  ru_decade_events_df <- bind_rows(ru_decade_events_df, decade_df)
+  
+}
+
+```
+
+
+
+
+## Annual
+
+### Arabic
+```{r}
+url_constant <- "https://ar.wikipedia.org/wiki/"
+dates_bc <- seq(from = 1, to = 400)
+dates_ad <- seq(from = 1, to = 2020)
+
+variable_bc <- str_c(dates_bc, "_ق_م")
+variable_ad <- str_c(dates_ad)
+
+wiki_annual_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+
+ar_annual_events_df <- data.frame()
+
+wiki_annual_urls[401]
+
+for (year in wiki_annual_urls[401:403]) {
+  year_scraped <- read_html(year)
+  year_events <- c()
+
+  events_scraped <- year_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+  
+  year_events <- c(year_events, events_scraped)
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(year_events)),
+    event = year_events
+  )
+  Sys.sleep(4)
+  ar_annual_events_df <- bind_rows(ar_annual_events_df, year_df)
+  
+}
+
+write_csv(ar_annual_events_df, "ar_annual_events.csv")
+
+
+
+```
+
+
+### Chinese
+```{r}
+url_constant <- "https://zh.wikipedia.org/wiki/"
+dates_bc <- seq(from = 1, to = 699)
+dates_ad <- seq(from = 1, to = 2020)
+
+variable_bc <- str_c(dates_bc, "_ق_م")
+variable_ad <- str_c(dates_ad, "年")
+
+wiki_annual_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+
+zh_annual_events_df <- data.frame()
+
+wiki_annual_urls[401]
+
+for (year in wiki_annual_urls[401:403]) {
+  year_scraped <- read_html(year)
+  year_events <- c()
+
+  events_scraped <- year_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+  
+  year_events <- c(year_events, events_scraped)
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(year_events)),
+    event = year_events
+  )
+  Sys.sleep(4)
+  zh_annual_events_df <- bind_rows(zh_annual_events_df, year_df)
+  
+}
+
+write_csv(zh_annual_events_df, "zh_annual_events.csv")
+
+
+
+
+```
+
+
+### French
+```{r}
+
+url_constant <- "https://fr.wikipedia.org/wiki/"
+dates_bc <- seq(from = 1, to = 500)
+dates_ad <- seq(from = 1, to = 2020)
+
+variable_bc <- str_c(dates_bc, "_av._J.-C.")
+variable_ad <- str_c(dates_ad)
+
+wiki_annual_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+fr_annual_events_df <- data.frame()
+
+wiki_decade_urls[1]
+last_url_run <- 0
+
+for (year in wiki_annual_urls[1499:1501]) {
+  last_url_run <- last_url_run + 1
+  year_scraped <- read_html(year)
+
+  events_scraped <- year_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(events_scraped)),
+    event = events_scraped
+  )
+  Sys.sleep(4)
+  fr_annual_events_df <- bind_rows(fr_annual_events_df, year_df)
+  
+}
+
+# Remove sur la site bibliothque nationale du France
+# remove the various portails (de, du, etc.)
+
+```
+
+
+### English
+```{r}
+
+url_constant <- "https://en.wikipedia.org/wiki/"
+dates_bc <- seq(from = 1, to = 600)
+dates_ad <- seq(from = 1, to = 2020)
+
+variable_bc <- str_c(dates_bc, "_BC")
+variable_ad <- str_c("AD_", dates_ad)
+
+wiki_annual_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+en_annual_events_df <- data.frame()
+
+wiki_decade_urls[1]
+last_url_run <- 0
+
+for (year in wiki_annual_urls) {
+  last_url_run <- last_url_run + 1
+  year_scraped <- read_html(year)
+
+  events_scraped <- year_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(events_scraped)),
+    event = events_scraped
+  )
+  Sys.sleep(4)
+  en_annual_events_df <- bind_rows(en_annual_events_df, year_df)
+  
+}
+
+write_csv(en_annual_events_df, "en_annual_events.csv")
+
+
+
+events_df_cleaning <- en_annual_events_df %>%
+  mutate(is_bc = str_detect(wikipedia_urls, "BC"),
+         year = str_extract(wikipedia_urls, ("\\d+")) %>% 
+           parse_number()
+  ) %>%
+  mutate(year = if_else(is_bc == TRUE, year * -1, year))
+
+head(events_df_cleaning)
+
+
+##OK this will get cut: getting ahead, but fun!
+events_df_grouped <- events_df_cleaning %>%
+  group_by(year) %>%
+  summarise(
+    n_events = n()
+  )
+
+
+events_df_grouped %>%
+  ggplot(aes(x = year, y = n_events)) +
+  geom_point() +
+  xlim(c(1600, 2020))
+
+events_df_grouped %>%
+  ggplot(aes(x = year, y = n_events)) +
+  geom_point() +
+  scale_y_log10() +
+  xlim(c(1500, 2000))
+
+```
+
+
+### German
+
+
+### Italian
+
+
+### Japanese
+
+
+### Russian
+```{r}
+
+url_constant <- "https://ru.wikipedia.org/wiki/"
+dates_bc <- seq(from = 1, to = 781)
+dates_ad <- seq(from = 1, to = 2020)
+
+variable_bc <- str_c(dates_bc, "_год_до_н._э.")
+variable_ad <- str_c(dates_ad, "_год")
+
+wiki_annual_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+
+ru_annual_events_df <- data.frame()
+
+wiki_annual_urls[1]
+last_url_run <- 0
+
+for (year in wiki_annual_urls[1:3]) {
+  last_url_run <- last_url_run + 1
+  year_scraped <- read_html(year)
+
+  events_scraped <- year_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(events_scraped)),
+    event = events_scraped
+  )
+  Sys.sleep(4)
+  ru_annual_events_df <- bind_rows(ru_annual_events_df, year_df)
+  
+}
+```
+
+
+### Spanish
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Archive of old stuff
+* English: decadal from 1790s BC and annual from 600 BC.
+* French: decadal from 2070s BC and annual from 500 BC.
+* Russian: decadal from 1210s BC and annual from 781 BC.
+* Spanish: decadal from 750 BC and annual from 510 BC.
+* German: annual from 652 BC.
+* Arabic: annual from 400 BC.
+* Chinese: decadal from 1690s BC and annual from 699 BC.
+* Japanese: annual from 700 BC.
+* Italian: dacadal from 960s BC and annual from 500 BC.

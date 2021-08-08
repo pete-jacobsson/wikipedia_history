@@ -1,0 +1,492 @@
+---
+title: 'The tempo of history: evaluating event density (part 1)'
+author: "Pete Jacobsson"
+date: "7/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+library(purrr)
+library(broom)
+```
+
+## Introduction
+This document summarizes an evaluation of the density of events reported on English language Wikipedia, corrected for the increase in the volume of historical information through time. The period covered is 1790s BC to AD 1000 going by decade. The underpinning aim is to evaluate whether there are any interesting patterns in the residuals pertaining to the axial age.
+
+
+
+- Note the data quality limitations on how far the outcomes of this project can be generalized.
+- Also provide some more historical background on axial.
+- Ditch regional grouping - not easily scrapeable
+
+
+This report summarizes the following:
+- Scraping the English language Wikipedia for number of events per decade over the period from 1790s BC (beginning of the record) to the 1800s AD. Decadal rather than annual resolution is chosen due to lack of annual resolution recording until 500 BC.
+- These results are then visualized and subject to limited exploratory modelling to highlight some of the key trends, both within the data themselves, as well as highlighting the artefacts that result from changing nature of the recording at 500 BC.
+
+
+One key consideration that has to be stressed at this point is that the data themselves are far from ideal. Rather than being a comprehensive record of all all events in the historical record, the English-language Wikipedia contains a record of what is present in the consciousness of a specific sub-set of the English speaking Wikipedia contributors. In other words, the measure taken is an imperfect measure of historical consciousness in the general public in the present, that may or may not relate to frequency of major historical events. 
+
+
+## Scraping Wikipedia.
+Wikipedia provides decadal lists of historical events starting at 1800 BC, with a clear address structure identifying the decades, eg.: <en.wikipedia.org/wiki/*1790s_BC*>. I take advantage of this and generate a vector of strings defining the addresses. This can then be iterated over by the web scraping algorithm.
+
+```{r}
+url_constant <- "https://en.wikipedia.org/wiki/"
+variable_bc <- str_c(seq(from = 0, to = 179)*10,
+                     "s_BC")
+variable_ad <- str_c(seq(from = 0, to = 99)*10,
+                     "s")
+
+wiki_decade_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+
+```
+
+Carry out the webscrape using the ***** tags. This allows to retain some information on the region/context of events further down stream.
+
+```{r}
+events_df <- data.frame()
+
+
+for (decade in wiki_decade_urls) {
+  decade_scraped <- read_html(decade)
+  decade_events <- c()
+
+  events_scraped <- decade_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+  
+  decade_events <- c(decade_events, events_scraped)
+  decade_df <- data.frame(
+    wikipedia_urls = rep(decade, length(decade_events)),
+    event = decade_events
+  )
+  Sys.sleep(3)
+  events_df <- bind_rows(events_df, decade_df)
+  
+}
+
+#At least one instance of underestimation using the ".mw-parser-output > ul li" tag: Hammurabi and Hammurabi code. Scrape and add manually.
+
+decade_scraped <- read_html("https://en.wikipedia.org/wiki/1790s_BC")
+decade_events <- c()
+events_scraped <- decade_scraped %>%
+  html_nodes("h2+ p") %>%
+  html_text()
+decade_events <- c(decade_events, events_scraped)
+events_scraped <- decade_scraped %>%
+  html_nodes("p+ p") %>%
+  html_text()
+decade_events <- c(decade_events, events_scraped)
+decade_df <- data.frame(
+ wikipedia_urls = rep(decade, length(decade_events)),
+ event = decade_events
+ )
+
+events_df <- bind_rows(events_df, decade_df) #This constitutes the df of events with associated link for the decade page.
+
+head(events_df)
+
+```
+
+The next step is to get the information on which decades are associated with the events. This can be parsed from the url's.
+
+```{r}
+events_df_cleaning <- events_df %>%
+  mutate(is_bc = str_detect(wikipedia_urls, "BC"),
+         decade = str_extract(wikipedia_urls, ("\\d+")) %>% 
+           parse_number()
+  ) %>%
+  mutate(decade = if_else(is_bc == TRUE, decade * -1, decade))
+
+events_df <- events_df_cleaning %>%
+  select(decade, event)
+
+
+```
+
+
+
+## The raw data
+Plotting the number of events reported on wikipedia decadal pages against the decade the events occured indicates two interesting trends in the English-speaking popular consciousness of the past.
+- First, there is a trend of continuous growth, that, once it begins, keeps persisting through history. There is no evidence of a slump in the number of events recorded on wikipedia, even across such transitions as the collapse of the Western Roman Empire, which *according to* popular consciousness mark a decline in the veracity of historical records.
+- Second, and more pertinent to our here, once we plot the number of events per decade on a logarithmic scale, we can notice that the onset of the increasing frequency of events reaching the popular consciousness seems to be beginning sometime around 750 BC, thus coinciding with the Jaspers' notion of the Axial Age.
+
+Several data quality issues also become apparent at this stage.
+- First there is a discontinuity at 500 BC, which is particularly stark on the logarithmic scale. This represents a shift in how historical data is recorded on Wikipedia: while before this time the data is aggregated by decade, after 500 BC the data is aggregated by year and the decadal results come from collating these annual data. It appears that this allows for more events to be recorded.
+- Second there are nine decades after 500 BC with much lower incidence of events recorded than expected based on the overall trend.
+
+```{r}
+events_by_decade <- events_df %>%
+  group_by(decade) %>%
+  summarize(
+    n_events  = n()
+  )
+
+events_by_decade %>%
+  ggplot(aes(
+    x = decade,
+    y = n_events
+  )) +
+  geom_point()
+
+events_by_decade %>%
+  ggplot(aes(
+    x = decade,
+    y = n_events
+  )) +
+  geom_point() +
+  scale_y_log10()
+
+```
+
+```{r}
+#Evaluating the low data points in the post-500BC period
+
+low_post_500bc <- events_by_decade %>%
+  filter(decade > -500 & n_events <40)
+
+low_post_500bc
+
+```
+Inspecting the results shows that different urls are required to access the decadal information  - for example 500s BC will redirect to the e.g. 6th century BC page rather than the desired decadal page.
+
+
+```{r}
+url_constant <- "https://en.wikipedia.org/wiki/"
+dates_bc <- seq(from = 0, to = 179)*10
+dates_ad <- seq(from = 0, to = 199)*10
+
+variable_bc <- if_else(dates_bc %% 100 == 0 & dates_bc != 0,
+                       str_c(dates_bc, "s_BC_(decade)"),
+                       str_c(dates_bc, "s_BC"))
+
+variable_ad <- if_else(dates_ad %% 100 == 0 & dates_ad != 0,
+                       str_c(dates_ad, "s_(decade)"),
+                       str_c(dates_ad, "s"))
+
+
+wiki_decade_urls <- c(str_c(url_constant, variable_bc), 
+                      str_c(url_constant, variable_ad))
+```
+
+
+Re-scrape Wikipedia with updated url's.
+```{r}
+events_df <- data.frame()
+
+wiki_decade_urls[362]
+
+for (decade in wiki_decade_urls[362:380]) {
+  decade_scraped <- read_html(decade)
+  decade_events <- c()
+
+  events_scraped <- decade_scraped %>%
+    html_nodes(".mw-parser-output > ul li") %>%
+    html_text()
+  
+  decade_events <- c(decade_events, events_scraped)
+  decade_df <- data.frame(
+    wikipedia_urls = rep(decade, length(decade_events)),
+    event = decade_events
+  )
+  Sys.sleep(4)
+  events_df <- bind_rows(events_df, decade_df)
+  
+}
+
+
+
+decade_scraped <- read_html("https://en.wikipedia.org/wiki/1790s_BC")
+decade_events <- c()
+events_scraped <- decade_scraped %>%
+  html_nodes("h2+ p") %>%
+  html_text()
+decade_events <- c(decade_events, events_scraped)
+events_scraped <- decade_scraped %>%
+  html_nodes("p+ p") %>%
+  html_text()
+decade_events <- c(decade_events, events_scraped)
+decade_df <- data.frame(
+ wikipedia_urls = rep(decade, length(decade_events)),
+ event = decade_events
+ )
+
+events_df <- bind_rows(events_df, decade_df) #This constitutes the df of events with associated link for the decade page.
+
+head(events_df)
+
+
+write.csv(events_df, "events_df.csv")
+
+
+events_df_cleaning <- events_df_cleaning %>%
+  mutate(is_bc = str_detect(wikipedia_urls, "BC"),
+         decade = str_extract(wikipedia_urls, ("\\d+")) %>% 
+           parse_number()
+  ) %>%
+  mutate(decade = if_else(decade == 0 , 1, decade)) %>% #tackle the "0" decade existing both bc and ad
+  mutate(decade = if_else(is_bc == TRUE, decade * -1, decade))
+
+
+
+events_df <- events_df_cleaning %>%
+  select(decade, event)
+
+write.csv(events_df, "events_df.csv")
+```
+
+
+Re-plot with the amended data
+
+```{r}
+events_df <- read_csv("events_df.csv")
+
+events_by_decade <- events_df %>%
+  group_by(decade) %>%
+  summarize(
+    n_events  = n()
+  )
+
+events_by_decade %>%
+  ggplot(aes(
+    x = decade,
+    y = n_events
+  )) +
+  geom_point() +
+  theme_bw() +
+  xlab("Year (BC/AD)") +
+  ylab("Events per decade") +
+  geom_vline(xintercept = 1200, linetype = "dashed") +
+  geom_vline(xintercept = 1600, linetype = "dashed") +
+  geom_text(x = 650, y = 2000, label = "Recording discontinuities \n at 1200 and 1600AD")
+  
+
+events_by_decade %>%
+  ggplot(aes(
+    x = decade,
+    y = n_events
+  )) +
+  geom_point() +
+  scale_y_log10() +
+  theme_bw() +
+  xlab("Year (BC/AD)") +
+  ylab("Events per decade (log scale)") + 
+  geom_vline(xintercept = -900, linetype = "dashed") +
+  geom_vline(xintercept = -500, linetype = "dashed") +
+  geom_text(x = -200, y = 1000, label = "Recording discontinuity \n at 500 BC") +
+  geom_text(x = -1300, y = 100, label = "Change in the rate of accumulation of historical data at 900 BC")
+```
+On the linear scale notice the drop in event count around 1200 AD. This is followed by accelerated growth at around 1400 AD, until a drop in recording around 1600 AD. These changes seem to reflect changes in how information is collated by Wikipedia.
+
+On the logistic scale the following features, besides the changes around 1200 and 1600 AD come to fore:
+1) the change in the rate of increase in the events recorded at ca. 500 BC.
+2) The shift towards an exponential increase in events recorded sometime around 800 BC.
+The former can be attributed to changes in how Wikipedia collates decadal information. The latter seems to be a genuine shift in the trend of accumulation of historical information on the webstie. 
+
+
+```{r}
+events_by_decade %>%
+  #filter(decade <= 1200) %>%
+  ggplot(aes(
+    x = decade,
+    y = n_events
+  )) +
+  geom_point() +
+  geom_vline(xintercept = -800)
+
+events_by_decade %>%
+  filter(decade <= 1200) %>%
+  ggplot(aes(
+    x = decade,
+    y = n_events
+  )) +
+  geom_point() +
+  scale_y_log10() +
+  geom_vline(xintercept = -800)
+
+```
+
+## Further exploration and modelling
+
+The next step is to objectify the apparent increase in recording around 800 BC.This is made complex by the changing recording standard from 500 BC onwards (the annual collation issue). As such, fitting the model and checking the residuals might not be an appropriate solution. Instead I take the following approach. First I roll a Pearson's r-squared over windows of 100, 200, and 300 years, observing for how these values differ. Second, I repeat with fitting linear models over the same windows and studying changing p-value on model fit. In practice, both can be attained by rolling the linear model function.
+
+```{r, echo=FALSE}
+#log the data
+
+
+events_by_decade <- events_by_decade %>%
+  mutate(n_events_log2  = log2(n_events),
+         n_events_log10 = log10(n_events))
+
+##Rolling 100 yrs window
+model_outputs_100 <- data.frame()
+for (i in 1:270) {
+  rolling_model <- lm(events_by_decade$n_events_log10[i : (i+9)] ~ events_by_decade$decade[i : (i+9)])
+  slope_statistics <- tidy(rolling_model)[2,]
+  fit_statistics <- glance(rolling_model)
+  
+  model_df <- bind_cols(decade = events_by_decade$decade[i], slope_statistics, fit_statistics)
+  model_outputs_100 <- bind_rows(model_outputs_100, model_df)
+  
+}
+
+model_outputs_100 <- model_outputs_100 %>%
+  select(decade, estimate, std.error, statistic...5, r.squared, adj.r.squared)
+
+
+##Rolling 200 yrs window
+model_outputs_200 <- data.frame()
+for (i in 1:270) {
+  rolling_model <- lm(events_by_decade$n_events_log10[i : (i+19)] ~ events_by_decade$decade[i : (i+19)])
+  slope_statistics <- tidy(rolling_model)[2,]
+  fit_statistics <- glance(rolling_model)
+  
+  model_df <- bind_cols(decade = events_by_decade$decade[i], slope_statistics, fit_statistics)
+  model_outputs_200 <- bind_rows(model_outputs_200, model_df)
+  
+}
+
+model_outputs_200 <- model_outputs_200 %>%
+  select(decade, estimate, std.error, statistic...5, r.squared, adj.r.squared)
+
+
+
+
+##Rolling 300 yrs window
+model_outputs_300 <- data.frame()
+for (i in 1:270) {
+  rolling_model <- lm(events_by_decade$n_events_log10[i : (i+29)] ~ events_by_decade$decade[i : (i+29)])
+  slope_statistics <- tidy(rolling_model)[2,]
+  fit_statistics <- glance(rolling_model)
+  
+  model_df <- bind_cols(decade = events_by_decade$decade[i], slope_statistics, fit_statistics)
+  model_outputs_300 <- bind_rows(model_outputs_300, model_df)
+  
+}
+
+model_outputs_300 <- model_outputs_300 %>%
+  select(decade, estimate, std.error, statistic...5, r.squared, adj.r.squared)
+
+
+```
+
+
+The next step is to plot the model outcomes on a single plot and interpret the results.
+
+```{r}
+#Combine the model outputs and transform to long format
+
+model_outputs_100 <- bind_cols(window = rep("100 yrs", 270), model_outputs_100)
+model_outputs_200 <- bind_cols(window = rep("200 yrs", 270), model_outputs_200)
+model_outputs_300 <- bind_cols(window = rep("300 yrs", 270), model_outputs_300)
+
+model_outputs <- bind_rows(model_outputs_100, model_outputs_200, model_outputs_300)
+
+#pivot to longer
+
+model_outputs_longer <- model_outputs %>%
+  pivot_longer(c(estimate, std.error, statistic, r.squared, adj.r.squared), 
+               names_to = "parameter", values_to = "estimate")
+
+
+model_outputs_longer %>%
+  filter(window == "200 yrs") %>%
+  ggplot(aes(x = decade,
+             y = estimate)) +
+  geom_line() + 
+  facet_wrap(~ parameter, ncol = 2, scales = "free")
+
+```
+The modeling results for the 300-year window indicate the following points:
+- The actual strengthening o the relationship between time and the volume of information on Wikipedia (and by proxy in the popular udnerstanding of history in the English-speaking world) increases beginning with the period 1100-800 BC.
+- The relationship becomes much stronger over the beginning of the axial age (800-400 BC).
+- It then weakens as the axial age comes to an end, due to a) shallower slopes (which might reflect different Wikipedia compilation practices) and b) potential changes to year-to year variability.
+
+Reviewing the 200-year window indicates that the beginning of the build-up is indeed tied to the axial age, though the trajectory is disrupted by the recording discontinuity at 500 BC (the change to method of compilation)
+
+As such, while the modelling does not provide a clear-cut response to the question of rates of popular knowledge increase, it does demonstrate that the onset of the axial age in broadly contemporaneous with the transition from linear, to exponential accumulation of popular knowledge.
+
+Furthermore, it is interesting to notice that while the mid-1st millennium BC witnesses fluctuations in average accumulation rates of popular knowledge, there is no major dip. This is interesting as far as "Dark Age" historiography is concerned: while there are fluctuations in how many events are recorded, the general trend does no indicate any implosion; hence, even though beliefs about the Dark Age might persist, the evidence shows that the trend of accumulation of popular historical record is not afefcted by this.
+
+
+## Modelling the overall accumulation trends
+
+One remaining item is to model the overall accumulation trends. There are two models to be built. 
+
+One is to model over the entirety of the data. This has obvious issues due to changes in information accumulation rate and also discontinuity in how Wikipedia reports decadal events from 500 BC onward. Having said that, the model residuals will provide some further context to the models of the preceding section.
+
+The second model only follows the logarithm of the events count after 500 BC. This allows us to do two things. First, there is the issue of inherent interest; it also allows us to study the residuals for the period 500 BC - 1200 AD, perhaps allowing a better understanding of the finer aspects of popular knowledge accumulation over that period. Second, we can extrapolate this model to earlier periods as a predictive model, providing further context for understanding how the ways that popular knowledge accumulated changed through time. 
+
+### Model 1: 1800 BC - 1200 AD
+```{r}
+#plot the regression 
+events_by_decade %>%
+  filter(decade < 1200) %>%
+  ggplot(aes(x = decade,
+             y = n_events_log10)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+#plot the residuals
+model_1 <- lm(n_events_log10 ~ decade,
+              data = events_by_decade %>%
+                filter(decade <1200))
+
+tidy(model_1)
+glance(model_1)
+
+
+augment(model_1, newdata = events_by_decade %>%
+          filter(decade < 1200)) %>%
+  ggplot(aes(x = decade,
+             y = .resid)) +
+  geom_point() +
+  geom_smooth()
+
+```
+Viewing the model 1 residuals we can see quite clearly the different trends discussed so far. In particular the change in the gradient of the loess smoother of the residuals around 1000 BC, indicating changes in how the information accumulates on Wikipedia.
+
+
+```{r}
+#Model 2 500BC - 1200BC
+
+events_by_decade %>%
+  filter(decade > -500 &decade < 1200) %>%
+  ggplot(aes(x = decade,
+             y = n_events_log10)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+#plot the residuals
+model_2 <- lm(n_events_log10 ~ decade,
+              data = events_by_decade %>%
+                filter(decade > -500 &decade < 1200))
+
+tidy(model_2)
+glance(model_2)
+tidy(model_1)
+glance(model_1)
+
+
+augment(model_2, newdata = events_by_decade %>%
+          filter(decade < 1200)) %>%
+  ggplot(aes(x = decade,
+             y = .resid)) +
+  geom_point()
+
+
+```
+
+Model 2 displays the following characteristics. First of all it does appear to describe the data well, although the few outliers around 1 BC/AD seem to be swinging the regression line ever so slightly. Furthermore, the residuals demonstrate the stark differences between pre- and post- 500 BC data, with the latter forming a relativel tight group. The residuals also show greater than expected amounts of events in popular understanding of history for some decades between 500 BC and AD 1.
+
+
+
+
+## Next steps
+The next stage is to evaluate whether this is a phenomenon specific to the English-laguage popular knowledge sphere, or whether it is more global in its reach. 
+
