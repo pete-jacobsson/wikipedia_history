@@ -277,7 +277,7 @@ zh_annual_events_df <- data.frame()
 
 wiki_annual_urls[401]
 
-for (year in wiki_annual_urls[1:3]) {
+for (year in wiki_annual_urls[1:1]) {
   year_scraped <- read_html(year)
   year_events <- c()
 

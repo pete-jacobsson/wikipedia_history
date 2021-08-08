@@ -265,7 +265,7 @@ url_constant <- "https://zh.wikipedia.org/wiki/"
 dates_bc <- seq(from = 1, to = 699)
 dates_ad <- seq(from = 1, to = 2020)
 
-variable_bc <- str_c(dates_bc, "_ق_م")
+variable_bc <- str_c("前", dates_bc, "年")
 variable_ad <- str_c(dates_ad, "年")
 
 wiki_annual_urls <- c(str_c(url_constant, variable_bc), 
@@ -277,7 +277,7 @@ zh_annual_events_df <- data.frame()
 
 wiki_annual_urls[401]
 
-for (year in wiki_annual_urls[401:403]) {
+for (year in wiki_annual_urls[1:1]) {
   year_scraped <- read_html(year)
   year_events <- c()
 

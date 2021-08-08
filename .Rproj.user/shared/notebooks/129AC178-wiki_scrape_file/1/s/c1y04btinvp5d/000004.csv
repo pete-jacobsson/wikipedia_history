@@ -1,0 +1,21 @@
+"0","for (year in wiki_annual_urls[1:1]) {
+  year_scraped <- read_html(year)
+  year_events <- c()
+
+  events_scraped <- year_scraped %>%
+    html_nodes("".mw-parser-output > ul li"") %>%
+    html_text()
+  
+  year_events <- c(year_events, events_scraped)
+  year_df <- data.frame(
+    wikipedia_urls = rep(year, length(year_events)),
+    event = year_events
+  )
+  Sys.sleep(4)
+  zh_annual_events_df <- bind_rows(zh_annual_events_df, year_df)
+  
+}
+"
+"2","Error in open.connection(x, ""rb"") : 
+  Timeout was reached: [zh.wikipedia.org] Operation timed out after 10014 milliseconds with 0 out of 0 bytes received
+"
